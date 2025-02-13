@@ -5,4 +5,4 @@ numpy
 matplotlib
 statsmodels
 scikit-learn
-talib
+ta

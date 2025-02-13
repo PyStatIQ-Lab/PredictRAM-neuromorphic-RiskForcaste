@@ -2,15 +2,12 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas_ta as ta  # Use pandas_ta for technical analysis
+import pandas_ta as ta
 from statsmodels.tsa.arima.model import ARIMA
 import streamlit as st
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestRegressor
 from scipy.stats import norm
-import numpy
-import pandas_ta as ta
-
 
 # Function to download stock data for Indian stocks
 def get_stock_data(stock_symbol, start_date='2020-01-01', end_date='2025-01-01'):
@@ -32,17 +29,18 @@ def forecast_arima(data, steps=5):
 # Machine Learning model for portfolio risk prediction
 def risk_prediction_model(stock_data):
     # Calculate Returns
-    stock_data['Returns'] = stock_data['Close'].pct_change()  # Calculate returns
+    stock_data['Returns'] = stock_data['Close'].pct_change()
+    stock_data['Label'] = stock_data['Returns'].shift(-1)  # Predict next day's return
     stock_data = stock_data.dropna()
     
     # Technical indicators using pandas_ta
-    stock_data['SMA'] = ta.sma(stock_data['Close'], length=14)  # Simple Moving Average
-    stock_data['EMA'] = ta.ema(stock_data['Close'], length=14)  # Exponential Moving Average
+    stock_data['SMA'] = ta.sma(stock_data['Close'], length=14)
+    stock_data['EMA'] = ta.ema(stock_data['Close'], length=14)
     
     # Prepare features and labels
     stock_data = stock_data.dropna()  # Drop rows with missing values after indicator calculations
-    features = stock_data[['SMA', 'EMA', 'Returns']].iloc[14:]  # Use features starting after the SMA/EMA calculation
-    labels = stock_data['Returns'].iloc[14:]
+    features = stock_data[['SMA', 'EMA', 'Returns']]
+    labels = stock_data['Label']
     
     # Split into training and testing sets
     train_size = int(len(features) * 0.8)
@@ -63,7 +61,7 @@ def risk_prediction_model(stock_data):
     
     # Evaluate Model
     rmse = np.sqrt(((y_pred - y_test) ** 2).mean())
-    return model, rmse
+    return model, scaler, rmse
 
 # Streamlit Dashboard
 def run_dashboard():
@@ -79,27 +77,39 @@ def run_dashboard():
 
     # Calculate Risk (VaR)
     stock_returns = stock_data['Close'].pct_change().dropna()
-    var_95 = calculate_var(stock_returns, confidence_level=0.95)
-    st.subheader("Value at Risk (VaR) Calculation")
-    st.write(f"1-Day 95% VaR: {var_95:.2%}")
+    if not stock_returns.empty:
+        var_95 = calculate_var(stock_returns, confidence_level=0.95)
+        st.subheader("Value at Risk (VaR) Calculation")
+        st.write(f"1-Day 95% VaR: {var_95:.2%}")
+    else:
+        st.write("Insufficient data for VaR calculation.")
 
     # ARIMA Forecast
-    forecast = forecast_arima(stock_data, steps=5)
-    st.subheader("ARIMA Stock Price Forecast (Next 5 Days)")
-    st.write(forecast)
+    if len(stock_data) >= 5:
+        forecast = forecast_arima(stock_data, steps=5)
+        st.subheader("ARIMA Stock Price Forecast (Next 5 Days)")
+        st.write(forecast)
+    else:
+        st.write("Insufficient data for ARIMA forecast.")
 
     # Risk Prediction Model using Random Forest
-    model, rmse = risk_prediction_model(stock_data)
-    st.subheader(f"Risk Prediction Model - RMSE: {rmse:.4f}")
-    st.write("Model trained with technical indicators and stock returns.")
+    if len(stock_data) > 14:  # Ensure enough data for indicators
+        model, scaler, rmse = risk_prediction_model(stock_data)
+        st.subheader(f"Risk Prediction Model - RMSE: {rmse:.4f}")
+        st.write("Model trained with technical indicators and stock returns.")
 
-    # Show Portfolio Risk Prediction
-    st.subheader("Portfolio Risk Prediction (Next Day)")
-    next_day_data = stock_data.iloc[-1:]  # Last day's data
-    next_day_features = next_day_data[['SMA', 'EMA', 'Returns']]  # Get the required features
-    next_day_scaled = StandardScaler().fit_transform(next_day_features)  # Scale the features
-    predicted_risk = model.predict(next_day_scaled)  # Predict the risk
-    st.write(f"Predicted Risk for Next Day: {predicted_risk[0]:.4f}")
+        # Show Portfolio Risk Prediction
+        st.subheader("Portfolio Risk Prediction (Next Day)")
+        next_day_data = stock_data.iloc[-1:]
+        next_day_features = next_day_data[['SMA', 'EMA', 'Returns']]
+        if not next_day_features.empty:
+            next_day_scaled = scaler.transform(next_day_features)
+            predicted_risk = model.predict(next_day_scaled)
+            st.write(f"Predicted Return for Next Day: {predicted_risk[0]:.4f}")
+        else:
+            st.write("Insufficient data to make prediction.")
+    else:
+        st.write("Insufficient historical data for risk prediction model.")
 
 # Run the Streamlit App
 if __name__ == "__main__":

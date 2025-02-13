@@ -8,6 +8,9 @@ import streamlit as st
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestRegressor
 from scipy.stats import norm
+import numpy
+import pandas_ta as ta
+
 
 # Function to download stock data for Indian stocks
 def get_stock_data(stock_symbol, start_date='2020-01-01', end_date='2025-01-01'):

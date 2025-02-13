@@ -2,6 +2,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import talib as ta  # Import TA-Lib for technical analysis
 from statsmodels.tsa.arima.model import ARIMA
 import streamlit as st
 from sklearn.preprocessing import StandardScaler
@@ -27,15 +28,17 @@ def forecast_arima(data, steps=5):
 
 # Machine Learning model for portfolio risk prediction
 def risk_prediction_model(stock_data):
+    # Calculate Returns
     stock_data['Returns'] = stock_data['Close'].pct_change()  # Calculate returns
     stock_data = stock_data.dropna()
     
-    # Feature engineering: Add technical indicators
-    stock_data['SMA'] = stock_data['Close'].rolling(window=14).mean()
-    stock_data['EMA'] = stock_data['Close'].ewm(span=14, adjust=False).mean()
+    # Technical indicators using TA-Lib
+    stock_data['SMA'] = ta.SMA(stock_data['Close'], timeperiod=14)  # Simple Moving Average
+    stock_data['EMA'] = ta.EMA(stock_data['Close'], timeperiod=14)  # Exponential Moving Average
     
     # Prepare features and labels
-    features = stock_data[['SMA', 'EMA', 'Returns']].iloc[14:]
+    stock_data = stock_data.dropna()  # Drop rows with missing values after indicator calculations
+    features = stock_data[['SMA', 'EMA', 'Returns']].iloc[14:]  # Use features starting after the SMA/EMA calculation
     labels = stock_data['Returns'].iloc[14:]
     
     # Split into training and testing sets
@@ -89,10 +92,10 @@ def run_dashboard():
 
     # Show Portfolio Risk Prediction
     st.subheader("Portfolio Risk Prediction (Next Day)")
-    next_day_data = stock_data.iloc[-1:]
-    next_day_features = next_day_data[['SMA', 'EMA', 'Returns']]
-    next_day_scaled = StandardScaler().fit_transform(next_day_features)
-    predicted_risk = model.predict(next_day_scaled)
+    next_day_data = stock_data.iloc[-1:]  # Last day's data
+    next_day_features = next_day_data[['SMA', 'EMA', 'Returns']]  # Get the required features
+    next_day_scaled = StandardScaler().fit_transform(next_day_features)  # Scale the features
+    predicted_risk = model.predict(next_day_scaled)  # Predict the risk
     st.write(f"Predicted Risk for Next Day: {predicted_risk[0]:.4f}")
 
 # Run the Streamlit App

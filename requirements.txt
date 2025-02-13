@@ -6,3 +6,4 @@ matplotlib
 statsmodels
 scikit-learn
 pandas_ta
+setuptools

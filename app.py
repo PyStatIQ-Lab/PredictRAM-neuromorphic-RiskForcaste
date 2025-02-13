@@ -2,7 +2,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import talib as ta  # Import TA-Lib for technical analysis
+import pandas_ta as ta  # Use pandas_ta for technical analysis
 from statsmodels.tsa.arima.model import ARIMA
 import streamlit as st
 from sklearn.preprocessing import StandardScaler
@@ -32,9 +32,9 @@ def risk_prediction_model(stock_data):
     stock_data['Returns'] = stock_data['Close'].pct_change()  # Calculate returns
     stock_data = stock_data.dropna()
     
-    # Technical indicators using TA-Lib
-    stock_data['SMA'] = ta.SMA(stock_data['Close'], timeperiod=14)  # Simple Moving Average
-    stock_data['EMA'] = ta.EMA(stock_data['Close'], timeperiod=14)  # Exponential Moving Average
+    # Technical indicators using pandas_ta
+    stock_data['SMA'] = ta.sma(stock_data['Close'], length=14)  # Simple Moving Average
+    stock_data['EMA'] = ta.ema(stock_data['Close'], length=14)  # Exponential Moving Average
     
     # Prepare features and labels
     stock_data = stock_data.dropna()  # Drop rows with missing values after indicator calculations
